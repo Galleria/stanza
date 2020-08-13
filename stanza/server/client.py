@@ -99,8 +99,8 @@ class RobustService(object):
     """ Service that resuscitates itself if it is not available. """
     CHECK_ALIVE_TIMEOUT = 120
 
-    def __init__(self, start_cmd, stop_cmd, endpoint, stdout=sys.stdout,
-                 stderr=sys.stderr, be_quiet=False, host=None, port=None, ignore_binding_error=False):
+    def __init__(self, start_cmd, stop_cmd, endpoint, stdout=None,
+                 stderr=None, be_quiet=False, host=None, port=None, ignore_binding_error=False):
         self.start_cmd = start_cmd and shlex.split(start_cmd)
         self.stop_cmd = stop_cmd and shlex.split(stop_cmd)
         self.endpoint = endpoint
@@ -139,13 +139,18 @@ class RobustService(object):
                                                          "(possibly something is already running there)" % self.port)
             if self.be_quiet:
                 # Issue #26: subprocess.DEVNULL isn't supported in python 2.7.
-                stderr = open(os.devnull, 'w')
+                if hasattr(subprocess, 'DEVNULL'):
+                    stderr = subprocess.DEVNULL
+                else:
+                    stderr = open(os.devnull, 'w')
+                stdout = stderr
             else:
+                stdout = self.stdout
                 stderr = self.stderr
             logger.info(f"Starting server with command: {' '.join(self.start_cmd)}")
             self.server = subprocess.Popen(self.start_cmd,
                                            stderr=stderr,
-                                           stdout=stderr)
+                                           stdout=stdout)
 
     def atexit_kill(self):
         # make some kind of effort to stop the service (such as a
